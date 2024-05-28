@@ -2,145 +2,11 @@
 
 #if !defined(MY_LIGHTING_INCLUDE)
 #define MY_LIGHTING_INCLUDE
-#include "UnityPBSLighting.cginc"
-#include "AutoLight.cginc"
-#if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
-    #if !defined(FOG_DISTANCE)
-        #define FOG_DEPTH 1
-    #endif
-    # define FOG_ON 1
+#include "./MyLightingInput.cginc"
+
+#if !defined(ALBEDO_FUNCTION)
+    #define ALBEDO_FUNCTION GetAlbedo
 #endif
-float4 _Color;
-float _Cutoff;
-sampler2D _MainTex, _DetailTex;
-float4 _MainTex_ST, _DetailTex_ST;
-
-//sampler2D _HeightMap;
-/// <summary>
-/// 纹理像素， 前两个分量纹理像素大小(v 和 v的分数表示)，后两个像素数量
-/// 若_HeightMap为256*128， 则改值为(1/256, 1/128, 256, 128);
-/// </summary>
-//float4 _HeightMap_TexelSize;
-sampler2D _NormalMap, _DetailNormalMap, _DetailMask;
-float _BumpScale, _DetailBumpScale;
-
-sampler2D _MetallicMap;
-float _Metallic;
-float _Smoothness;
-
-sampler2D _EmissionMap;
-float3 _Emission;
-
-sampler2D _OcclusionMap;
-float _OcclusionStrength;
-
-struct VertexData
-{
-    float4 vertex : POSITION;
-    float3 normal : NORMAL;
-    float4 tangent : TANGENT;
-    float2 uv : TEXCOORD0;
-    float2 uv1 : TEXCOORD1;
-};
-
-struct Interpolators
-{
-    float4 pos : SV_POSITION;
-    float4 uv : TEXCOORD0;
-    float3 normal : TEXCOORD1;
-#if defined(BINORMAL_PER_FRAGMENT)
-    float4 tangent : TEXCOORD2;
-#else
-    float3 tangent : TEXCOORD2;
-    float3 binormal : TEXCOORD3;
-#endif
-#if FOG_DEPTH
-    float4 worldPos : TEXCOORD4; //将深度赋予位置的第4个坐标
-#else
-    float3 worldPos : TEXCOORD4;
-#endif
-//
-//#if defined(SHADOWS_SCREEN)
-//    float4 shadowCoordinates : TECDOORD5;
-//#endif
-    SHADOW_COORDS(5)
-#if defined(VERTEXLIGHT_ON)
-    float3 vertexLightColor : TEXCOORD6;
-#endif 
-#if defined(LIGHTMAP_ON)
-    float2 lightmapUV : TEXCOORD6;
-#endif
-};
-
-
-
-float GetMetallic(Interpolators i)
-{
-#if defined(_METALLIC_MAP)
-    return tex2D(_MetallicMap, i.uv.xy).r;
-#else
-    return _Metallic;
-#endif
-}
-
-float GetSmoothness(Interpolators i)
-{
-    float smoothness = 1;
-#if defined(_SMOOTHNESS_ALBEDO)
-    smoothness = tex2D(_MainTex, i.uv.xy).a;
-#elif defined(_SMOOTHNESS_METALLIC) && defined(_METALLIC_MAP)
-    smoothness = tex2D(_MetallicMap, i.uv.xy).a;
-#endif
-    return smoothness * _Smoothness;
-}
-
-float3 GetEmission(Interpolators i)
-{
-#if defined(FORWARD_BASE_PASS) || defined(DEFERRED_PASS)
-#if defined(_EMISSION_MAP)
-    return tex2D(_EmissionMap, i.uv.xy) * _Emission;
-#else
-    return _Emission;
-#endif
-#else
-    return 0;
-#endif
-}
-
-float GetOcclusion(Interpolators i) {
-#if defined(_OCCLUSION_MAP)
-    //return tex2D(_OcclusionMap, i.uv.xy).g;
-    return lerp(1, tex2D(_OcclusionMap, i.uv.xy).g, _OcclusionStrength);
-#else
-    return 1;
-#endif
-}
-
-float GetDetailMask(Interpolators i) {
-#if defined(_DETIAL_MASK)
-    return tex2D(_DetailMask, i.uv.xy).a;
-#else
-    return 1;
-#endif
-}
-
-float3 GetAlbedo(Interpolators i) {
-    float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Color.rgb;
-#if defined(_DETAIL_ALBEDO_MAP)
-    float3 details = tex2D(_DetailTex, i.uv.zw) * unity_ColorSpaceDouble;
-    albedo = lerp(albedo, albedo * details, GetDetailMask(i));
-#endif
-    return albedo;
-}
-
-float GetAlpha(Interpolators i) 
-{
-    float alpha = _Color.a;
-#if !defined(_SMOOTHNESS_ALBEDO)    //在不使用alpha通道作为平滑度时
-    return alpha * tex2D(_MainTex, i.uv.xy).a;
-#endif 
-    return alpha;
-}
 
 void ComputeVertexLightColor(inout Interpolators i)
 {
@@ -281,9 +147,7 @@ UnityIndirect CreateUnityIndirect(Interpolators i, float3 viewDir)
     }
     indirectLight.specular = probe0;
 #else
-    else {
-        indirectLight.specular = probe0;
-    }
+    //indirectLight.specular = probe0;
 #endif
     indirectLight.specular = probe0;
     //indirectLight.specular = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
@@ -366,6 +230,10 @@ float3 GetTangentSpaceNormal(Interpolators i) {
 
 void InitializeFragmentNormal(inout Interpolators i)
 {
+    //float3 dpdx = ddx(i.worldPos);
+    //float3 dpdy = ddy(i.worldPos);
+    //i.normal = normalize(cross(dpdy, dpdx)); //flatwireframe
+
     float3 tangentSpaceNormal = GetTangentSpaceNormal(i);
 #if defined(BINORMAL_PER_FRAGMENT)
     float3 binormal = CreateBinormal(i.normal, i.tangent.xyz, i.tangent.w); //cross(i.normal, i.tangent.xyz) * i.tangent.w * unity_WorldTransformParams.w;
@@ -373,7 +241,7 @@ void InitializeFragmentNormal(inout Interpolators i)
     float3 binormal = i.binormal;
 #endif
     //切线空间 TBN
-    i.normal = (tangentSpaceNormal.x * i.tangent + tangentSpaceNormal.y * binormal + tangentSpaceNormal.z * i.normal); //主要z y坐标
+    i.normal = (tangentSpaceNormal.x * i.tangent + tangentSpaceNormal.y * binormal + tangentSpaceNormal.z * i.normal); //注意z y坐标
     i.normal = normalize(i.normal);
 }
 
@@ -406,10 +274,26 @@ struct FragmentOutput
 #endif
 };
 
+void ApplyParallax(inout Interpolators i) 
+{
+#if defined(_PARALLAX_MAP)
+    i.tangentViewDir = normalize(i.tangentViewDir);
+    i.tangentViewDir.xy /= (i.tangentViewDir.z+0.42);
+    float height = tex2D(_ParallaxMap, i.uv.xy).g;
+    height -= 0.5;
+    height *= _ParallaxStrength;
+    float2 uvOffset = i.tangentViewDir.xy * height;
+    i.uv.xy += uvOffset;
+    i.uv.zw += uvOffset * (_DetailTex_ST.xy / _MainTex_ST.xy) ;
+#endif
+}
 
 Interpolators MyVertexProgram(VertexData v)
 {
     Interpolators i;
+    UNITY_INITIALIZE_OUTPUT(Interpolators, i);
+    UNITY_SETUP_INSTANCE_ID(v);
+    UNITY_TRANSFER_INSTANCE_ID(v, i);
     i.pos = UnityObjectToClipPos(v.vertex);
     i.worldPos.xyz = mul(unity_ObjectToWorld, v.vertex);
 #if FOG_DEPTH
@@ -431,7 +315,9 @@ Interpolators MyVertexProgram(VertexData v)
 #if defined(SHADOWS_SCREEN)
     //裁剪空间[-1,1]需要转换为屏幕空间[0,1]中;
     //透视除法 /i.pos.w;插值影响除法,所以不能在顶点程序中处理,应该在片段程序中
-    //为什么插值影响除法,XW从(0, 1) 插值到(1,4) 1.先做除法后插值0->1/4 中间点是1/8， 2.先插值在除法(0.5, 1.5) 中间点是1/3
+    // 最好用一个例子说明。假设我们在XW坐标对（0，1）和（1，4）之间进行插值。无论我们如何执行，X / W都从0开始，到¼结束。但是在这些点之间的一半呢？
+    //如果我们在插值之前进行除法，则最终将在0和¼之间的中间位置，即⅛。
+    //如果我们在插值后进行除法，则在中点处将得到坐标（0.5，2.5），这将导致除法0.5 / 2.5，即⅕，而不是⅛。因此，在这种情况下，插值不是线性的。
     //i.shadowCoordinates.xy = (i.pos.xy + i.pos.w) * 0.5;
     //i.shadowCoordinates.xy = (float2(i.pos.x, -i.pos.y) + i.pos.w) * 0.5; //Direct3D翻转y
     //i.shadowCoordinates.zw = i.pos.zw;
@@ -456,11 +342,22 @@ Interpolators MyVertexProgram(VertexData v)
         unity_4LightAtten0, i.worldPos.xyz, i.normal
     );
 #endif 
+
+#if defined(_PARALLAX_MAP)
+    float3x3 objectToTangent = float3x3(
+            v.tangent.xyz,
+            cross(v.normal, v.tangent.xyz) * v.tangent.w,
+            v.normal
+        );
+    i.tangentViewDir = mul(objectToTangent, ObjSpaceViewDir(v.vertex));
+#endif
     return i;
 }
 
 FragmentOutput MyFragmentProgram(Interpolators i)
 {
+    UNITY_SETUP_INSTANCE_ID(i);
+    ApplyParallax(i);
     //clip不是免费的，对台式机GPU来说不错，但是对切片渲染的移动GUP并不喜欢丢弃片元。
     float alpha = GetAlpha(i);
 #if defined(_RENDERING_CUTOUT)
@@ -468,13 +365,13 @@ FragmentOutput MyFragmentProgram(Interpolators i)
 #endif
     InitializeFragmentNormal(i);
     float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos.xyz);
-    //float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Color.rgb;
+    //float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * UNITY_ACCESS_INSTANCED_PROP(_Color).rgb;
     //albedo *= tex2D(_DetailTex, i.uv.zw) * unity_ColorSpaceDouble;
 
     float oneMinusReflectivity;
 
     float3 specularTint;
-    float3 albedo = DiffuseAndSpecularFromMetallic(GetAlbedo(i), GetMetallic(i), specularTint, oneMinusReflectivity);
+    float3 albedo = DiffuseAndSpecularFromMetallic(ALBEDO_FUNCTION(i), GetMetallic(i), specularTint, oneMinusReflectivity);
 #if defined(_RENDERING_TRANSPARENT)
     albedo *= alpha;
     alpha = 1 - oneMinusReflectivity + alpha * oneMinusReflectivity;

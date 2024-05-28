@@ -17,19 +17,23 @@
 	#endif
 #endif
 
-float4 _Tint;
+UNITY_INSTANCING_BUFFER_START(TestColor_Instancing)
+UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+UNITY_INSTANCING_BUFFER_END(TestColor_Instancing)
 sampler2D _MainTex;
 float4 _MainTex_ST;
 float _AlphaCutoff;
 sampler3D _DitherMaskLOD;
 
 struct VertexData {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 position : POSITION;
 	float3 normal : NORMAL;
 	float2 uv : TEXCOORD0;
 };
 
 struct InterpolatorsVertex {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 position : SV_POSITION;
 #if SHADOWS_NEED_UV
 	float2 uv : TEXCOORD0;
@@ -40,6 +44,7 @@ struct InterpolatorsVertex {
 };
 
 struct Interpolators {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 #if SHADOWS_SEMITRANSPARENT
 	UNITY_VPOS_TYPE vpos : VPOS;
 #else
@@ -55,7 +60,7 @@ struct Interpolators {
 };
 
 float GetAlpha(Interpolators i) {
-	float alpha = _Tint.a;
+	float alpha = UNITY_ACCESS_INSTANCED_PROP(TestColor_Instancing, _Color).a;
 #if SHADOWS_NEED_UV
 	alpha *= tex2D(_MainTex, i.uv.xy).a;
 #endif
@@ -64,6 +69,8 @@ float GetAlpha(Interpolators i) {
 
 InterpolatorsVertex MyShadowVertexProgram(VertexData v) {
 	InterpolatorsVertex i;
+	UNITY_SETUP_INSTANCE_ID(v);
+	UNITY_TRANSFER_INSTANCE_ID(v, i);
 #if defined(SHADOWS_CUBE)
 	i.position = UnityObjectToClipPos(v.position);
 	i.lightVec =
@@ -89,6 +96,7 @@ InterpolatorsVertex MyShadowVertexProgram(VertexData v) {
 	//}
 
 float4 MyShadowFragmentProgram (Interpolators i) : SV_TARGET {
+	UNITY_SETUP_INSTANCE_ID(i);
 	float alpha = GetAlpha(i);
 	#if defined(_RENDERING_CUTOUT)
 		clip(alpha - _AlphaCutoff);

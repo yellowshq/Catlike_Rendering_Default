@@ -10,6 +10,11 @@ using UnityEngine.Rendering;
 /// </summary>
 public class MyLightingShaderGUI : ShaderGUI
 {
+    enum TessellationMode
+    {
+        Uniform, Edge
+    }
+
     //着色器的平滑度从哪里获取
     private enum SmoothnessSource
     {
@@ -90,7 +95,16 @@ public class MyLightingShaderGUI : ShaderGUI
         this.properties = properties;
         DoRenderingMode();
         DoMain();
+        if (target.HasProperty("_TessellationUniform"))
+        {
+            DoTessellation();
+        }
+        if (target.HasProperty("_WireframeColor"))
+        {
+            DoWireframe();
+        }
         DoSecondary();
+        DoAdvance();
     }
 
     private void DoRenderingMode()
@@ -177,10 +191,17 @@ public class MyLightingShaderGUI : ShaderGUI
         DoMetallic();
         DoSmoothness();
         DoNormal();
+        DoParallax();
         DoOcclusion();
         DoEmission();
         DoDetailMask();
         editor.TextureScaleOffsetProperty(mainTex); //平铺和偏移
+    }
+
+    private void DoAdvance()
+    {
+        GUILayout.Label("Advanced Options", EditorStyles.boldLabel);
+        editor.EnableInstancingField();
     }
 
     private void DoAlphaCutoff()
@@ -257,6 +278,18 @@ public class MyLightingShaderGUI : ShaderGUI
         }
     }
 
+    private void DoParallax()
+    {
+        MaterialProperty map = FindProperty("_ParallaxMap");
+        EditorGUI.BeginChangeCheck();
+        editor.TexturePropertySingleLine(MakeLabel(map, "Parallax (G)"), map, map.textureValue ? FindProperty("_ParallaxStrength") : null);
+        if (EditorGUI.EndChangeCheck())
+        {
+            SetKeyWord("_PARALLAX_MAP", map.textureValue);
+        }
+    }
+
+
     private void DoOcclusion()
     {
         MaterialProperty map = FindProperty("_OcclusionMap");
@@ -303,6 +336,53 @@ public class MyLightingShaderGUI : ShaderGUI
         {
             SetKeyWord("_DETAIL_NORMAL_MAP", map.textureValue);
         }
+    }
+
+    private void DoWireframe()
+    {
+        GUILayout.Label($"Wireframe", EditorStyles.boldLabel);
+        EditorGUI.indentLevel += 2;
+        editor.ShaderProperty(FindProperty("_WireframeColor"), MakeLabel("Color"));
+        editor.ShaderProperty(FindProperty("_WireframeSmoothing"), MakeLabel("Smoothing", "In screen space."));
+        editor.ShaderProperty(FindProperty("_WireframeThickness"), MakeLabel("Thickness", "In screen space."));
+        EditorGUI.indentLevel -= 2;
+    }
+
+    void DoTessellation()
+    {
+        GUILayout.Label("Tessellation", EditorStyles.boldLabel);
+        EditorGUI.indentLevel += 2;
+
+        TessellationMode mode = TessellationMode.Uniform;
+        if (IsKeyWordEnable("_TESSELLATION_EDGE"))
+        {
+            mode = TessellationMode.Edge;
+        }
+        EditorGUI.BeginChangeCheck();
+        mode = (TessellationMode)EditorGUILayout.EnumPopup(
+            MakeLabel("Mode"), mode
+        );
+        if (EditorGUI.EndChangeCheck())
+        {
+            RecordAction("Tessellation Mode");
+            SetKeyWord("_TESSELLATION_EDGE", mode == TessellationMode.Edge);
+        }
+
+        if (mode == TessellationMode.Uniform)
+        {
+            editor.ShaderProperty(
+                FindProperty("_TessellationUniform"),
+                MakeLabel("Uniform")
+            );
+        }
+        else
+        {
+            editor.ShaderProperty(
+                FindProperty("_TessellationEdgeLength"),
+                MakeLabel("Edge Length")
+            );
+        }
+        EditorGUI.indentLevel -= 2;
     }
 
     private void RecordAction(string label)

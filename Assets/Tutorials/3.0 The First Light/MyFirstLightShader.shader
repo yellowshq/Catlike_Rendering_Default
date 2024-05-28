@@ -1,4 +1,4 @@
-﻿Shader "Custom/My First Light Shader 1"
+﻿Shader "Custom_Test/My First Light Shader 1"
 {
     Properties
     {

@@ -18,6 +18,10 @@
         _DetailBumpScale("Detail Bump Scale", Float) = 1
          [NoScaleOffset]_EmissionMap("Emission", 2D) = "black" {}
         _Emission("Emission", Color) = (0,0,0)
+
+        [NoScaleOffset]_ParallaxMap("Parallax", 2D) = "black" {}
+        _ParallaxStrength("Parallax Strength", Range(0,0.1))= 0
+
         [NoScaleOffset]_OcclusionMap("Occlusion", 2D) = "White" {}
         _OcclusionStrength("Occlusion Strength", Range(0,1)) = 1
 
@@ -52,7 +56,7 @@
             #pragma shader_feature _ _NORMAL_MAP
             #pragma shader_feature _ _DETAIL_ALBEDO_MAP
             #pragma shader_feature _ _DETAIL_NORMAL_MAP
-
+            #pragma shader_feature _ _PARALLAX_MAP
             #pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 
             #pragma multi_compile _ SHADOWS_SCREEN
@@ -61,6 +65,8 @@
 
             #pragma multi_compile_fwdbase
             #pragma multi_compile_fog
+            #pragma multi_compile_instancing
+            #pragma instancing_options lodfade
 
             #pragma vertex MyVertexProgram
             #pragma fragment MyFragmentProgram
@@ -95,7 +101,7 @@
             #pragma shader_feature _ _NORMAL_MAP
             #pragma shader_feature _ _DETAIL_ALBEDO_MAP
             #pragma shader_feature _ _DETAIL_NORMAL_MAP
-
+            #pragma shader_feature _ _PARALLAX_MAP
             #pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 
             //#pragma multi_compile DIRECTIONAL DIRECTIONAL_COOKIE POINT POINT_COOKIE SPOT
@@ -103,6 +109,7 @@
             #pragma multi_compile_fwdadd_fullshadows
             #pragma multi_compile_fog
             //#define FOG_DISTANCE
+            //#pragma multi_compile_instancing//其他光源不支持GPUInstance
 
             //#define POINT
 
@@ -135,7 +142,7 @@
             #pragma shader_feature _ _NORMAL_MAP
             #pragma shader_feature _ _DETAIL_ALBEDO_MAP
             #pragma shader_feature _ _DETAIL_NORMAL_MAP
-
+            #pragma shader_feature _ _PARALLAX_MAP
             #pragma shader_feature _ _RENDERING_CUTOUT //_RENDERING_FADE _RENDERING_TRANSPARENT
 
             //#pragma multi_compile _ SHADOWS_SCREEN
@@ -143,6 +150,8 @@
             //#pragma multi_compile _ UNITY_HDR_ON
             //#pragma multi_compile _ LIGHTMAP_ON
             #pragma multi_compile_prepassfinal
+            #pragma multi_compile_instancing
+            #pragma instancing_options lodfade
 
             #pragma vertex MyVertexProgram
             #pragma fragment MyFragmentProgram
@@ -168,6 +177,9 @@
             #pragma shader_feature _SEMITRANSPARENT_SHADOWS
 
             #pragma multi_compile_shadowcaster
+            #pragma multi_compile_instancing
+            #pragma instancing_options lodfade
+
             #pragma vertex MyShadowVertexProgram
             #pragma fragment MyShadowFragmentProgram
 

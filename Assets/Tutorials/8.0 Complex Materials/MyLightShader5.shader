@@ -1,8 +1,8 @@
-﻿Shader "Custom/My Light Shader 5"
+﻿Shader "Custom_Test/My Light Shader 5"
 {
     Properties
     {
-        _Tint ("Tint", Color) = (1,1,1,1)
+        _Color ("Tint", Color) = (1,1,1,1)
         _MainTex ("Albedo", 2D) = "white" {}
         [NoScaleOffset] _NormalMap("Normals", 2D) = "bump" {}
         _BumpScale ("Bump Scale", Float) = 1
